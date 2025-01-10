@@ -6,7 +6,7 @@ library(ggplot2)
 library(scales)
 library(lmtest)
 library(stargazer)
-
+library(readxl)
 
 
 # Load the data
@@ -191,9 +191,6 @@ model1 <- plm(
 # Summary of the model
 summary(model1)
 coeftest(model1, vcov. = vcovHC, type = "HC1")
-##Stargazer output
-stargazer(model1, model2, type = "html", out = "regression_table.html",
-          title = "Regression Results", align = TRUE, digits = 2)
 
 ##Pooled OLS
 pooled_ols_model <- plm(Admissions ~ PM2.5 + TotalPop, 
@@ -223,3 +220,78 @@ model2 <- plm(
 # Summary of the model
 summary(model2)
 coeftest(model2, vcov. = vcovHC, type = "HC1")
+##Stargazer output
+stargazer(model1, model2, type = "html", out = "regression_table.html",
+          title = "Regression Results", align = TRUE, digits = 2)
+
+####INCOME
+file_path <- "income2014.xls"
+inc2014 <- read_excel(file_path, sheet = 4)
+
+inc2014 <- inc2014[-c(1:4), c(1,7)] %>% 
+  rename(MSOA11 = Contents,
+         Income = ...7) %>% 
+  mutate(Income = as.numeric(Income),
+         Income = 50 *Income,
+         Year = 2014)
+  
+
+file_path <- "income2016.xls"
+inc2016 <- read_excel(file_path, sheet = 4)
+
+inc2016 <- inc2016[-c(1:4), c(1,7)]%>% 
+  rename(MSOA11 = Contents,
+         Income = ...7)%>% 
+  mutate(Income = as.numeric(Income),
+         Year = 2016)
+
+file_path <- "income2018.xls"
+inc2018 <- read_excel(file_path, sheet = 4)
+
+inc2018 <- inc2018[-c(1:4), c(1,7)]%>% 
+  rename(MSOA11 = Contents,
+         Income = ...7)%>% 
+  mutate(Income = as.numeric(Income),
+         Year = 2018)
+
+file_path <- "income2020.xlsx"
+inc2020 <- read_excel(file_path, sheet = 4)
+
+inc2020 <- inc2020[-c(1:4),c(1,7) ]%>% 
+  rename(MSOA11 = Contents,
+         Income = ...7)%>% 
+  mutate(Income = as.numeric(Income),
+         Year = 2020)
+
+inc2015 <- inc2014 %>% 
+  mutate(Year = 2015)
+inc2017 <- inc2016 %>% 
+  mutate(Year = 2017
+         )
+inc2019 <- inc2018 %>% 
+  mutate(Year = 2019)
+
+inccombined <- bind_rows(inc2014, inc2015, inc2016, inc2017, inc2018, inc2019, inc2020)
+inccombined$Year <- as.factor(inccombined$Year)
+
+inccombined <- pdata.frame(inccombined, index = c("MSOA11", "Year"))
+
+merged_data_clean_for_binding <- merged_data_clean %>% 
+  filter(Year %in% c(2014:2019))
+combination <- inccombined %>%
+  left_join(merged_data_clean_for_binding, by = c("MSOA11", "Year"))
+
+combination <- pdata.frame(combination, index = c("MSOA11", "Year")) %>% 
+  drop_na()
+
+##FE with income
+model3 <- plm(
+  Admissions_per_capita ~ PM2.5 + Income,  # Model formula with PM2.5 and percent_over_65 as controls
+  data = combination,
+  index = c("MSOA11", "Year"),  # Panel data identifiers (MSOA and Year)
+  model = "within" ,
+  effect = "twoways"# Fixed effects (within estimator)
+)
+
+summary(model3)
+coeftest(model3, cvoc. = vcovHC, type = "HC1" )
