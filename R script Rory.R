@@ -210,7 +210,7 @@ merged_data_clean <- merged_data_clean %>%
 
 # Run the fixed effects model for PM2.5 on admissions_per_capita by MSOA and Year, with percent_over_65 as a control
 model2 <- plm(
-  Admissions_per_capita ~ PM2.5 ,  # Model formula with PM2.5 and percent_over_65 as controls
+  Admissions_per_capita ~ PM2.5 + TotalPop ,  # Model formula with PM2.5 and percent_over_65 as controls
   data = merged_data_clean,
   index = c("MSOA11", "Year"),  # Panel data identifiers (MSOA and Year)
   model = "within" ,
@@ -295,3 +295,10 @@ model3 <- plm(
 
 summary(model3)
 coeftest(model3, cvoc. = vcovHC, type = "HC1" )
+
+##Stargazer results
+stargazer(model1, model2,model3, type = "html", out = "regression_table2.html",
+          title = "Regression Results",
+          column.labels = c("Controlling for totalpop", "Admission_per_capita", "Same but with income control"),
+          model.names = FALSE,
+          align = TRUE, digits = 3)
