@@ -59,6 +59,52 @@ air_quality_long <- air_quality %>%
                names_to = "Year",     
                values_to = "PM2.5")  
 
+# Calculate the average PM2.5 for each unique MSOA and Year
+average_msoa_data <- air_quality_long %>%
+  group_by(Year) %>%
+  summarise(average_MSOA = mean(PM2.5, na.rm = TRUE))  # Calculate the mean, removing any NA values
+
+# Ensure that 'Year' is treated as numeric
+average_msoa_data$Year <- as.numeric(average_msoa_data$Year)
+
+# Plot the average PM2.5 as a line graph with a red line, x-axis at 5-year intervals, and y-axis between 0 and 20
+ggplot(average_msoa_data, aes(x = Year, y = average_MSOA, group = 1)) + 
+  geom_line(color = "red", size = 1) +  # Red line to connect the dots
+  labs(
+    title = "Average Air pollution in England, measured by PM2.5 exposure 2003-2023",
+    x = "Year",
+    y = "Average MSOA PM2.5 exposure - micrograms per cubic metre (µg m³)"
+  ) +
+  scale_x_continuous(breaks = seq(2003, 2023, by = 5)) +  # Set x-axis breaks in 5-year steps
+  scale_y_continuous(expand = c(0, 0), limits = c(0, 20)) +  # Set y-axis between 0 and 20
+  geom_hline(yintercept = 10, linetype = "dashed", color = "blue", size = 1) +  # Add the first horizontal line
+  geom_text(aes(x = 2020, y = 10, label = "UK 2040 Target"), color = "blue", vjust = -0.5) +  # Label for the first line
+  geom_hline(yintercept = 5, linetype = "dashed", color = "black", size = 1) +  # Add the second horizontal line
+  geom_text(aes(x = 2020, y = 5, label = "WHO recommended level"), color = "black", vjust = -0.5) +  # Label for the second line
+  theme_minimal()  # Use a minimal theme for the plot
+
+# Re-aggregate the data to calculate average admissions per year
+average_admissions <- admissions_wide %>%
+  group_by(Year) %>%
+  summarise(AverageAdmissions = mean(Admissions, na.rm = TRUE))
+
+# View the resulting data
+print(average_admissions, n=21)
+
+# Ensure that 'Year' is treated as numeric
+average_admissions$Year <- as.numeric(average_admissions$Year)
+
+# Plot the average admissions as a line graph with a red line and updated titles
+ggplot(average_admissions, aes(x = Year, y = AverageAdmissions, group = 1)) +  # Add group = 1
+  geom_line(color = "red", size = 1) +  # Red line graph
+  labs(
+    title = "Average MOSA Level Respiratory Admissions 2003-2023",
+    x = "Year",
+    y = "Average Respiratory Admissions"
+  ) +
+  scale_x_continuous(breaks = seq(2000, 2025, by = 5)) +  # Set x-axis breaks from 2000 with a step of 5 years
+  scale_y_continuous(expand = c(0, 0), limits = c(0, 200)) +  # Set y-axis between 0 and 200
+  theme_minimal()  # Use a minimal theme for the plot
 
 # Merge the datasets on MSOA11 and Year
 merged_data_clean <- left_join(admissions_wide, air_quality_long, by = c("MSOA11", "Year")) %>% 
@@ -183,6 +229,24 @@ merged_data_clean <- merged_data_clean %>%
   rename(
     TotalPop = TotalPop.x
   )
+
+# Get summary statistics for all numeric columns
+summary_stats <- merged_data_clean %>%
+  summarise(
+    across(where(is.numeric), 
+           list(
+             Mean = ~mean(., na.rm = TRUE),
+             Median = ~median(., na.rm = TRUE),
+             SD = ~sd(., na.rm = TRUE),
+             Min = ~min(., na.rm = TRUE),
+             Max = ~max(., na.rm = TRUE),
+             N = ~n()
+           ), 
+           .names = "{col}_{fn}")  # Naming columns like 'ColumnName_Mean'
+  )
+
+# Display the result
+summary_stats
 
 # Set Year and MSOA11 as factors for panel data
 merged_data_clean$Year <- as.factor(merged_data_clean$Year)
